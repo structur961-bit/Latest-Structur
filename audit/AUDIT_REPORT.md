@@ -1,3 +1,38 @@
+# Restaurant verification update: 17 October 2026
+
+The current repository was compared with the hosted database through the authenticated Supabase SQL connector. The earlier report below describes the 16 October baseline; this update supersedes its connection status, test count and migration compatibility conclusions.
+
+## New verified database mismatches and fixes
+
+- Hosted bookings_status_check rejected pending reservations. The migration now permits pending while retaining confirmed, seated, completed, cancelled and no_show. The booking editor includes seated.
+- Hosted orders_payment_status_check rejected partial payments. The migration now permits partial, unpaid, paid and refunded.
+- Hosted orders_status_check rejected refunded orders. The migration retains open and the other existing states while adding refunded. The order editor includes open.
+- inventory_items.product_service_id referenced menu_items rather than product_services. The migration imports legacy rows first, then replaces and validates the FK without clearing existing links.
+- The existing stock trigger would double-process completion. Its exact inspected function body is matched by hash before detaching the legacy trigger. Its function remains for auditability. Unknown or modified stock implementations still abort the transaction.
+- JSON null recipes now produce empty recipe snapshots, allowing completion and reversal without JSON-array errors.
+- Existing explicit EXECUTE grants on internal restaurant trigger functions are revoked from public, anon and authenticated. Client calls to public checkout and reservation functions remain intentional and validate their input.
+
+## Dashboard behavior
+
+All ten restaurant data pages use shared loading/error/retry handling. Old or unmounted requests cannot replace a newer business response. Silent list caps were removed from products, categories, customers, bookings, orders, inventory, payments, campaigns, loyalty customer selection and recipe ingredient selection. Data continues to paginate in batches of 500. Order details reject stale overlapping responses and show the business currency. Product/category deletion failures are reported.
+
+## Verification
+
+- 50 automated tests pass, including hosted status constraints, exact legacy-trigger replacement, canonical inventory links and JSON null recipes.
+- ESLint, TypeScript and the production build pass. The existing large-bundle warning remains.
+- Browser tests pass across all ten dashboard routes, registration/login/recovery, owner booking and menu edits, fractional inventory, checkout settings, public orders/reservations and mobile layouts. Added tests verify a failed menu query recovers through Retry and customer 600 remains searchable across pagination. Browser responses are synthetic; no hosted customer/order/account was created.
+- The read-only live schema check still fails: the four public views are missing and anonymous reads still reach private rows. See live-schema-status.txt.
+
+## Deployment approval block
+
+Automatic approval review rejected application of the exact restaurant_setup.sql migration because it changes production-wide shared constraints, triggers, policies, grants and security functions without explicit approval of that blast radius. No migration was applied and no hosted rows were changed. Applying SQL through another route would bypass that rejection and was not attempted.
+
+The prepared migration affects businesses, locations, customers, categories, product_services, bookings, inventory_items, orders, order_items, business_settings, payments, campaigns, loyalty_ledger and staff_memberships; it restricts legacy menu tables and purchasing tables when present, and adds stock movements/public projections. These are shared tables, so access changes can affect other verticals. It preserves business rows, but rollback of old policies and constraints would require restoring their prior definitions. Explicit production approval is required before deployment.
+
+Real hosted authentication/writes, email delivery and post-migration isolation remain unverified. Card processing, staff permissions, automated campaigns, live AI, table allocation, menu variants/modifiers and delivery-zone pricing remain outside the implemented restaurant flow.
+
+---
+
 # Restaurant schema correction and verification
 
 Completed local verification: 16 October 2026, Asia/Dubai.

@@ -1,22 +1,24 @@
 # Structur Restaurant — schema-aligned Supabase application
 
-Updated 16 October 2026 for Supabase project `cdkvojsruitrbgwkvgjt`, using the supplied database diagram and read-only column checks.
+Updated 17 October 2026 for Supabase project `cdkvojsruitrbgwkvgjt`, using the supplied database diagram and live SQL inspection of columns, constraints and trigger definitions.
 
 ## Deployment status
 
-The application and SQL changes are local. They have **not** been applied to the hosted database. The latest read-only check still found anonymous access to private restaurant rows, and the new public views are not installed. The frontend and database migration must be deployed together.
+The revised SQL has **not** been applied to the hosted database. Automatic approval review rejected the production migration pending explicit approval of its changes to shared tables, constraints, triggers, policies and grants. The latest read-only check still found anonymous access to private restaurant rows, and the new public views are not installed. The frontend and database migration must be deployed together.
 
 ## Database setup
 
 1. Open the project's Supabase SQL Editor with administrator access.
 2. Run `supabase/restaurant_preflight.sql`. It lists existing triggers, policies and column definitions, plus aggregate checks for conflicting settings, rates, recipes, currencies and ownership.
 3. Run the complete `supabase/restaurant_setup.sql` in one query. It is transactional and rerunnable. It targets the existing tables and retains their data.
-4. If it reports a conflicting legacy processing trigger, inspect and reconcile that trigger before retrying. The migration deliberately stops rather than double-processing stock, loyalty or payments. Duplicate settings and barcode conflicts also require data reconciliation.
+4. The migration detaches only the exact old stock trigger inspected in this project, after matching its function body hash. Other conflicting processing triggers still stop deployment and require inspection. Duplicate settings and barcode conflicts also require data reconciliation.
 5. Run `npm run check:database`. It must pass before treating the hosted restaurant application as deployed and isolated.
 
 The migration uses `categories`, `product_services`, `orders`, `order_items`, `business_settings`, and the other existing owner tables. It does not replace them with a separate menu catalog. Any rows in legacy `menu_categories`/`menu_items` tables are copied with their IDs into the canonical catalog, then anonymous/client access to the unused legacy tables is revoked. No source rows are deleted.
 
 The migration adds the missing menu UI fields, delivery address, recipe snapshots, stock movements and public views. Existing orders keep their real IDs; the application derives a display reference from the order ID. Order items inherit ownership through `order_id` and do not require a `business_id` column. Payment-method settings are stored in the existing JSONB `payment_rules` field.
+
+Live SQL inspection also found an inventory foreign key targeting `menu_items`, and CHECK constraints rejecting pending bookings, partial payments and refunded orders. The migration corrects that relationship after preserving the legacy catalog and extends the states while retaining open orders and seated bookings. Existing historic stock flags remain subject to reconciliation because no movement history exists for those deductions.
 
 ## Local application
 

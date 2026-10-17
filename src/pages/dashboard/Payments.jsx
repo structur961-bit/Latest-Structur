@@ -1,3 +1,5 @@
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
 import { toast } from 'sonner';
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -27,7 +29,7 @@ function ManualPaymentForm({ business, onSave, onClose }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    base44.entities.Order.filter({ business_id: business.id }, '-created_date', 100).then(setOrders);
+    base44.entities.Order.filter({ business_id: business.id }, '-created_date').then(setOrders).catch(error => toast.error(error.message || 'Could not load orders.'));
   }, [business.id]);
 
   const chooseOrder = (orderId) => {
@@ -75,20 +77,10 @@ function ManualPaymentForm({ business, onSave, onClose }) {
 export default function Payments() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('transactions');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
-  const load = () => {
-    if (!currentBusiness) return;
-    base44.entities.Payment.filter({ business_id: currentBusiness.id }, '-created_date', 100).then(data => {
-      setPayments(data);
-      setLoading(false);
-    });
-  };
-
-  useEffect(() => { load(); }, [currentBusiness]);
+  const { data: payments, loading, error, refresh: load } = useDashboardData(currentBusiness?.id, [], () => base44.entities.Payment.filter({ business_id: currentBusiness.id }, '-created_date'));
 
   const paid = payments.filter(p => p.status === 'paid');
   const totalRevenue = paid.reduce((s, p) => s + (p.amount || 0), 0);
@@ -97,6 +89,7 @@ export default function Payments() {
 
   return (
     <div className="space-y-6">
+      <DashboardDataStatus loading={loading} error={error} onRetry={load} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('payments.title')}</h1>
         <Button onClick={() => setShowPaymentForm(true)} className="gap-2"><Plus className="h-4 w-4" /> Record payment</Button>

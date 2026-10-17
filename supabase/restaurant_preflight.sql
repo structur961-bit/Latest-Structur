@@ -35,3 +35,9 @@ select 'owners_missing_auth_user',count(*) from public.businesses b where b.owne
 and not exists(select 1 from auth.users u where u.id=b.owner_user_id)
 union all
 select 'completed_orders_with_legacy_stock_flag',count(*) from public.orders where inventory_deducted=true;
+
+-- Column names alone do not reveal rejected workflow states or legacy FKs.
+select conrelid::regclass as table_name,conname,pg_get_constraintdef(oid) as definition
+from pg_constraint where connamespace='public'::regnamespace
+ and conrelid in ('public.bookings'::regclass,'public.orders'::regclass,'public.inventory_items'::regclass)
+order by conrelid::regclass::text,conname;

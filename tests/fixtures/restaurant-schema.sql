@@ -1,5 +1,5 @@
 -- Column shapes verified against the supplied diagram and live read-only probes.
--- Existing hosted constraints/triggers must still be checked during deployment.
+-- Hosted CHECK constraints verified through the SQL connector on 17 October 2026.
 create table if not exists public.businesses (
  id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique, about text,
  vertical text not null default 'restaurant', country text, city text, currency text not null default 'USD',
@@ -35,7 +35,8 @@ create table if not exists public.bookings (
  id uuid primary key default gen_random_uuid(), business_id uuid not null references public.businesses(id) on delete cascade,
  customer_id uuid references public.customers(id) on delete set null, location_id uuid references public.locations(id) on delete set null,
  booking_type text not null default 'table_reservation', party_size integer not null default 2, table_label text,
- start_at timestamptz not null, end_at timestamptz, status text not null default 'pending', notes text, staff_user_id uuid,
+ start_at timestamptz not null, end_at timestamptz, status text not null default 'confirmed'
+ constraint bookings_status_check check(status in ('confirmed','seated','completed','cancelled','no_show')), notes text, staff_user_id uuid,
  created_at timestamptz not null default now()
 );
 create table if not exists public.inventory_items (
@@ -49,9 +50,11 @@ create table if not exists public.inventory_items (
 create table if not exists public.orders (
  id uuid primary key default gen_random_uuid(), business_id uuid not null references public.businesses(id) on delete cascade,
  customer_id uuid references public.customers(id) on delete set null, location_id uuid references public.locations(id) on delete set null,
- order_type text not null default 'dine_in', status text not null default 'pending', subtotal numeric not null default 0,
+ order_type text not null default 'dine_in', status text not null default 'pending'
+ constraint orders_status_check check(status in ('open','pending','confirmed','preparing','ready','completed','cancelled')), subtotal numeric not null default 0,
  tax numeric not null default 0, service_charge numeric not null default 0, total numeric not null default 0,
- payment_status text not null default 'unpaid', inventory_deducted boolean not null default false,
+ payment_status text not null default 'unpaid'
+ constraint orders_payment_status_check check(payment_status in ('unpaid','paid','refunded')), inventory_deducted boolean not null default false,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now(), table_label text, notes text
 );
 create table if not exists public.order_items (

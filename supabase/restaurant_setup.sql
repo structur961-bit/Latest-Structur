@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgcrypto;
 -- Column shapes verified against the supplied diagram and live read-only probes.
--- Existing hosted constraints/triggers must still be checked during deployment.
+-- Hosted constraints and processing triggers verified on 17 October 2026.
 create table if not exists public.businesses (
  id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique, about text,
  vertical text not null default 'restaurant', country text, city text, currency text not null default 'USD',
@@ -95,6 +95,21 @@ create table if not exists public.staff_memberships (
  created_at timestamptz not null default now()
 );
 
+-- Replace only the exact legacy stock implementation inspected in this project.
+-- Keep the old function for auditability, but detach its trigger to avoid a
+-- second deduction. Any edited or unknown implementation still stops below.
+do $$
+begin
+ if exists (
+  select 1 from pg_trigger t join pg_proc p on p.oid=t.tgfoid
+  where t.tgrelid='public.orders'::regclass and t.tgname='trg_deduct_inventory_on_order_complete'
+   and p.oid=to_regprocedure('public.deduct_inventory_on_order_complete()')
+   and md5(regexp_replace(p.prosrc,'\s+','','g'))='abffd09662c3f3dcd6bf545ed4f30198'
+ ) then
+  drop trigger trg_deduct_inventory_on_order_complete on public.orders;
+ end if;
+end $$;
+
 -- Block financial/stock double-processing by an unknown legacy trigger. Its
 -- definition must be reconciled before this migration installs its replacement.
 do $$
@@ -113,6 +128,18 @@ begin
   raise exception 'Reconcile legacy trigger %.% before installing restaurant processing',legacy.relname,legacy.tgname;
  end loop;
 end $$;
+
+-- Extend the hosted state constraints to cover the restaurant workflow while
+-- retaining existing states such as open orders and seated reservations.
+alter table public.bookings drop constraint if exists bookings_status_check;
+alter table public.bookings add constraint bookings_status_check
+ check (status in ('pending','confirmed','seated','completed','cancelled','no_show'));
+alter table public.orders drop constraint if exists orders_status_check;
+alter table public.orders add constraint orders_status_check
+ check (status in ('open','pending','confirmed','preparing','ready','completed','cancelled','refunded'));
+alter table public.orders drop constraint if exists orders_payment_status_check;
+alter table public.orders add constraint orders_payment_status_check
+ check (payment_status in ('unpaid','partial','paid','refunded'));
 
 -- Add only UI support fields missing from the verified canonical tables.
 alter table public.categories add column if not exists description text;
@@ -259,7 +286,7 @@ as $$
     where id = biz_id and owner_user_id = auth.uid()
   );
 $$;
-revoke all on function public.is_business_owner(uuid) from public;
+revoke all on function public.is_business_owner(uuid) from public, anon;
 grant execute on function public.is_business_owner(uuid) to authenticated;
 
 drop policy if exists "Owners manage their businesses" on public.businesses;
@@ -390,7 +417,7 @@ begin
     v_quantity := (v_item->>'quantity')::integer;
     select * into v_menu from public.product_services where id = (v_item->>'product_service_id')::uuid and business_id = v_business.id;
     insert into public.order_items (order_id, product_service_id, name_snapshot, quantity, unit_price, recipe_snapshot)
-    values (v_order_id, v_menu.id, v_menu.name, v_quantity, v_menu.price, coalesce(v_menu.recipe,'[]'));
+    values (v_order_id, v_menu.id, v_menu.name, v_quantity, v_menu.price, coalesce(nullif(v_menu.recipe,'null'::jsonb),'[]'));
   end loop;
   return jsonb_build_object('id', v_order_id, 'order_number', v_order_number, 'subtotal', v_subtotal, 'service_charge', v_service, 'tax', v_tax, 'total', v_subtotal + v_service + v_tax, 'currency', v_business.currency);
 end $$;
@@ -596,6 +623,22 @@ begin
 end $$;
 
 -- Snapshot recipes so completing/refunding an order uses its original ingredients.
+-- The hosted inventory FK still targets menu_items. Import above preserves its
+-- IDs before moving the relationship to the canonical catalog. Validation here
+-- rejects dangling references instead of discarding inventory links.
+do $$
+declare fk record;
+begin
+ for fk in select conname from pg_constraint
+ where conrelid='public.inventory_items'::regclass and contype='f'
+  and conkey=array[(select attnum from pg_attribute where attrelid='public.inventory_items'::regclass and attname='product_service_id')]::smallint[]
+ loop
+  execute format('alter table public.inventory_items drop constraint %I',fk.conname);
+ end loop;
+ alter table public.inventory_items add constraint inventory_items_product_service_id_fkey
+  foreign key (product_service_id) references public.product_services(id) on delete set null;
+end $$;
+
 alter table public.order_items add column if not exists recipe_snapshot jsonb;
 create table if not exists public.restaurant_stock_movements (
  id uuid primary key default gen_random_uuid(),
@@ -634,7 +677,7 @@ begin
  if not public.is_business_owner(new.business_id) then raise exception 'Only the restaurant owner can change order stock'; end if;
  if new.status = 'completed' and not coalesce(old.inventory_deducted,false) then
    -- Existing order lines acquire a snapshot at their first completion.
-   update public.order_items oi set recipe_snapshot = coalesce(p.recipe,'[]')
+   update public.order_items oi set recipe_snapshot = coalesce(nullif(p.recipe,'null'::jsonb),'[]')
      from public.product_services p where oi.order_id = new.id and oi.product_service_id = p.id and oi.recipe_snapshot is null;
    for ingredient in
      select (r.value->>'inventory_item_id')::uuid as stock_id, sum((r.value->>'quantity')::numeric * oi.quantity) as needed
@@ -652,7 +695,7 @@ begin
  elsif new.status in ('cancelled','refunded') and coalesce(old.inventory_deducted,false) then
    if not exists (select 1 from public.restaurant_stock_movements where order_id = new.id)
       and exists (select 1 from public.order_items oi left join public.product_services p on p.id = oi.product_service_id
-                  where oi.order_id = new.id and coalesce(oi.recipe_snapshot,p.recipe,'[]'::jsonb) <> '[]'::jsonb) then
+                  where oi.order_id = new.id and coalesce(nullif(oi.recipe_snapshot,'null'::jsonb),nullif(p.recipe,'null'::jsonb),'[]'::jsonb) <> '[]'::jsonb) then
      raise exception 'Legacy stock deduction requires reconciliation before reversal';
    end if;
    for ingredient in select inventory_item_id as stock_id, -sum(quantity_delta) as restore
@@ -702,4 +745,22 @@ end $$;
 drop trigger if exists restaurant_guard_order_items on public.order_items;
 create trigger restaurant_guard_order_items before insert or update or delete on public.order_items for each row execute function public.guard_restaurant_order_items();
 
+-- CREATE OR REPLACE preserves prior explicit role grants. Trigger functions
+-- are internal; attaching a trigger does not require client EXECUTE rights.
+do $$
+declare f record;
+begin
+ for f in select p.oid::regprocedure as signature from pg_proc p
+ join pg_namespace n on n.oid=p.pronamespace
+ where n.nspname='public' and p.prorettype='trigger'::regtype
+  and p.proname=any(array['refresh_customer_total_spent','set_order_item_price',
+   'deduct_inventory_on_order_complete','check_business_references','apply_loyalty_delta',
+   'sync_order_payment','validate_restaurant_recipe','process_restaurant_order_stock',
+   'validate_restaurant_checkout_rates','guard_restaurant_order_items'])
+ loop
+  execute format('revoke all on function %s from public, anon, authenticated',f.signature);
+ end loop;
+end $$;
+
+notify pgrst, 'reload schema';
 commit;

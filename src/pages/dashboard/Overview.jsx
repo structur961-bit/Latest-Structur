@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
+import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import StatCard from '@/components/common/StatCard';
@@ -11,30 +13,24 @@ import { useLanguage } from '@/lib/i18n';
 export default function Overview() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [stats, setStats] = useState({ orders: 0, customers: 0, revenue: 0, bookings: 0 });
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [recentBookings, setRecentBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error, refresh } = useDashboardData(currentBusiness?.id, { orders: [], customers: [], payments: [], bookings: [] }, async () => {
+    const id = currentBusiness.id;
+    const [orders, customers, payments, bookings] = await Promise.all([
+      base44.entities.Order.filter({ business_id: id }, '-created_date'),
+      base44.entities.Customer.filter({ business_id: id }),
+      base44.entities.Payment.filter({ business_id: id, status: 'paid' }),
+      base44.entities.Booking.filter({ business_id: id }, '-created_date'),
+    ]);
+    return { orders, customers, payments, bookings };
+  });
 
-  useEffect(() => {
-    if (!currentBusiness) return;
-    const biz = currentBusiness.id;
-    Promise.all([
-      base44.entities.Order.filter({ business_id: biz }, '-created_date'),
-      base44.entities.Customer.filter({ business_id: biz }),
-      base44.entities.Booking.filter({ business_id: biz }, '-created_date'),
-      base44.entities.Payment.filter({ business_id: biz, status: 'paid' }),
-    ]).then(([orders, customers, bookings, payments]) => {
-      const revenue = payments.reduce((s, p) => s + (p.amount || 0), 0);
-      setStats({ orders: orders.length, customers: customers.length, revenue, bookings: bookings.length });
-      setRecentOrders(orders.slice(0, 5));
-      setRecentBookings(bookings.filter(booking => new Date(booking.start_at).getTime() >= Date.now() && ['pending', 'confirmed'].includes(booking.status)).sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()).slice(0, 5));
-      setLoading(false);
-    });
-  }, [currentBusiness]);
+  const stats = { orders: data.orders.length, customers: data.customers.length, revenue: data.payments.reduce((sum,payment) => sum + payment.amount, 0), bookings: data.bookings.length };
+  const recentOrders = data.orders.slice(0,5);
+  const recentBookings = data.bookings.filter(booking => new Date(booking.start_at).getTime() >= Date.now() && ['pending','confirmed'].includes(booking.status)).sort((a,b) => Date.parse(a.start_at) - Date.parse(b.start_at)).slice(0,5);
 
   return (
     <div className="space-y-6">
+      <DashboardDataStatus loading={loading} error={error} onRetry={refresh} />
       <div>
         <h1 className="text-2xl font-bold">{t('dashboard.overview')}</h1>
         <p className="text-muted-foreground text-sm mt-1">{t('dashboard.whatHappeningToday')}</p>

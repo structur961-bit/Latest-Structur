@@ -1,6 +1,8 @@
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
 import { toast } from 'sonner';
 import { restaurantDateTime, restaurantDateTimeInput } from '@/lib/restaurantTime';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import { Button } from '@/components/ui/button';
@@ -14,7 +16,7 @@ import { Plus, CalendarCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLanguage } from '@/lib/i18n';
 
-const STATUSES = ['pending','confirmed','completed','cancelled','no_show'];
+const STATUSES = ['pending','confirmed','seated','completed','cancelled','no_show'];
 const TYPES = ['table_reservation','appointment','consultation','class','service_job'];
 
 
@@ -81,21 +83,16 @@ function BookingForm({ booking, customer, onSave, onClose }) {
 export default function Bookings() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [bookings, setBookings] = useState([]);
-  const [customers, setCustomers] = useState({});
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  const load = async () => {
-    const [data, customerRows] = await Promise.all([base44.entities.Booking.filter({ business_id: currentBusiness.id }, '-created_date', 100), base44.entities.Customer.filter({ business_id: currentBusiness.id }, '-created_date', 500)]);
-    setBookings(data);
-    setCustomers(Object.fromEntries(customerRows.map(customer => [customer.id, customer])));
-  };
-
-  useEffect(() => { if (currentBusiness) load(); }, [currentBusiness]);
+  const { data: { bookings, customers }, loading, error, refresh: load } = useDashboardData(currentBusiness?.id, { bookings: [], customers: {} }, async () => {
+    const [bookings, rows] = await Promise.all([base44.entities.Booking.filter({ business_id: currentBusiness.id }, '-created_date'),base44.entities.Customer.filter({ business_id: currentBusiness.id }, '-created_date')]); return { bookings, customers: Object.fromEntries(rows.map(row => [row.id,row])) };
+  });
 
   return (
     <div className="space-y-5">
+      <DashboardDataStatus loading={loading} error={error} onRetry={load} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
         <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">

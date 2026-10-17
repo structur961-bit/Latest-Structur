@@ -49,9 +49,11 @@ export default function CategorySidebar({ categories, selected, onSelect, busine
 
   const handleDelete = async (cat) => {
     if (!confirm(`Delete category "${cat.name}"? Items in this category won't be deleted.`)) return;
-    await base44.entities.Category.delete(cat.id);
-    onCategoriesChanged();
-    if (selected === cat.id) onSelect(null);
+    try {
+      await base44.entities.Category.delete(cat.id);
+      onCategoriesChanged();
+      if (selected === cat.id) onSelect(null);
+    } catch (error) { toast.error(error.message || 'Could not delete this category.'); }
   };
 
   return (

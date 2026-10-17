@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
+import { toast } from 'sonner';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import { Button } from '@/components/ui/button';
@@ -14,23 +17,14 @@ import ProductForm from '@/components/products/ProductForm';
 export default function Products() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  const loadAll = async () => {
-    const [prods, cats] = await Promise.all([
-      base44.entities.ProductService.filter({ business_id: currentBusiness.id }, '-created_date', 500),
-      base44.entities.Category.filter({ business_id: currentBusiness.id }, 'sort_order', 200),
-    ]);
-    setItems(prods);
-    setCategories(cats);
-  };
-
-  useEffect(() => { if (currentBusiness) loadAll(); }, [currentBusiness]);
+  const { data: { items, categories }, loading, error, refresh: loadAll } = useDashboardData(currentBusiness?.id, { items: [], categories: [] }, async () => {
+    const [items, categories] = await Promise.all([base44.entities.ProductService.filter({ business_id: currentBusiness.id }, '-created_date'),base44.entities.Category.filter({ business_id: currentBusiness.id }, 'sort_order')]); return { items, categories };
+  });
 
   const filtered = items.filter(item => {
     const matchesCategory = selectedCategoryId === null || item.category_id === selectedCategoryId;
@@ -41,14 +35,17 @@ export default function Products() {
 
   const handleDelete = async (item) => {
     if (!confirm(`Delete "${item.name}"?`)) return;
-    await base44.entities.ProductService.delete(item.id);
-    loadAll();
+    try {
+      await base44.entities.ProductService.delete(item.id);
+      await loadAll();
+    } catch (error) { toast.error(error.message || 'Could not delete this menu item.'); }
   };
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
   return (
     <div className="space-y-5">
+      <DashboardDataStatus loading={loading} error={error} onRetry={loadAll} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('products.title')}</h1>
         <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2">

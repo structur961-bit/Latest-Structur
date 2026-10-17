@@ -1,5 +1,7 @@
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
 import { toast } from 'sonner';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import { Button } from '@/components/ui/button';
@@ -55,23 +57,15 @@ function AdjustPointsForm({ customers, onSave, onClose }) {
 export default function Loyalty() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [customers, setCustomers] = useState([]);
-  const [ledger, setLedger] = useState([]);
   const [showForm, setShowForm] = useState(false);
 
-  const load = async () => {
-    const [c, l] = await Promise.all([
-      base44.entities.Customer.filter({ business_id: currentBusiness.id }, '-loyalty_points', 50),
-      base44.entities.LoyaltyLedger.filter({ business_id: currentBusiness.id }, '-created_date', 20),
-    ]);
-    setCustomers(c);
-    setLedger(l);
-  };
-
-  useEffect(() => { if (currentBusiness) load(); }, [currentBusiness]);
+  const { data: { customers, ledger }, loading, error, refresh: load } = useDashboardData(currentBusiness?.id, { customers: [], ledger: [] }, async () => {
+    const [customers,ledger] = await Promise.all([base44.entities.Customer.filter({ business_id: currentBusiness.id }, '-loyalty_points'),base44.entities.LoyaltyLedger.filter({ business_id: currentBusiness.id }, '-created_date')]); return { customers, ledger };
+  });
 
   return (
     <div className="space-y-6">
+      <DashboardDataStatus loading={loading} error={error} onRetry={load} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('loyalty.title')}</h1>
         <Button onClick={() => setShowForm(true)} className="gap-2">

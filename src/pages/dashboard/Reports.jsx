@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
+import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -11,22 +13,16 @@ import { useLanguage } from '@/lib/i18n';
 export default function Reports() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [data, setData] = useState({ orders: [], customers: [], payments: [], bookings: [] });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!currentBusiness) return;
+  const { data, loading, error, refresh } = useDashboardData(currentBusiness?.id, { orders: [], customers: [], payments: [], bookings: [] }, async () => {
     const id = currentBusiness.id;
-    Promise.all([
+    const [orders, customers, payments, bookings] = await Promise.all([
       base44.entities.Order.filter({ business_id: id }, '-created_date'),
       base44.entities.Customer.filter({ business_id: id }),
       base44.entities.Payment.filter({ business_id: id, status: 'paid' }),
       base44.entities.Booking.filter({ business_id: id }, '-created_date'),
-    ]).then(([orders, customers, payments, bookings]) => {
-      setData({ orders, customers, payments, bookings });
-      setLoading(false);
-    });
-  }, [currentBusiness]);
+    ]);
+    return { orders, customers, payments, bookings };
+  });
 
   const totalRevenue = data.payments.reduce((s, p) => s + (p.amount || 0), 0);
 
@@ -49,6 +45,7 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
+      <DashboardDataStatus loading={loading} error={error} onRetry={refresh} />
       <h1 className="text-2xl font-bold">{t('reports.title')}</h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

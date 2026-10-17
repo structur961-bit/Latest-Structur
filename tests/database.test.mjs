@@ -22,6 +22,7 @@ before(async () => {
     create function auth.jwt() returns jsonb language sql as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
     grant usage on schema auth to anon, authenticated; grant execute on function auth.uid(), auth.jwt() to anon, authenticated;`);
   await db.exec(fs.readFileSync('tests/fixtures/restaurant-schema.sql', 'utf8'));
+  await db.exec(fs.readFileSync('tests/fixtures/restaurant-legacy.sql', 'utf8'));
   await db.exec(setup);
   // An unknown old permissive policy must not survive the migration.
   await db.exec('create policy "Legacy allow everyone" on public.customers for all using (true) with check (true); grant all on public.customers to anon;');
@@ -35,6 +36,7 @@ before(async () => {
 });
 after(()=>db.close());
 test('schema bootstraps a new database and is idempotent', async()=>assert.equal((await db.query("select count(*)::int n from information_schema.tables where table_schema='public' and table_name in ('businesses','bookings','orders','payments')")).rows[0].n,4));
+
 test('anonymous reads only published businesses', async()=>assert.equal((await asRole('anon',null,tx=>tx.query('select id from restaurant_public_businesses'))).rows.length,2));
 test('anonymous users cannot read customer information or write menu items', async()=>{
   await assert.rejects(asRole('anon',null,tx=>tx.query('select * from customers')),/permission denied/);
@@ -156,8 +158,8 @@ test('insufficient ingredient stock rolls back order status, movement rows and e
 
 test('rerunning migration preserves canonical data and imports legacy menu data without deleting it',async()=>{
  const existing=(await db.query('select count(*)::int n from orders')).rows[0].n;
- await db.exec(`create table menu_categories(id uuid primary key,business_id uuid,name text,sort_order integer,is_active boolean);
- create table menu_items(id uuid primary key,business_id uuid,category_id uuid,name text,price numeric,currency text);
+ await db.exec(`create table if not exists menu_categories(id uuid primary key,business_id uuid,name text,sort_order integer,is_active boolean);
+ create table if not exists menu_items(id uuid primary key,business_id uuid,category_id uuid,name text,price numeric,currency text);
  create table suppliers(id uuid primary key,business_id uuid,name text);
  create table purchase_orders(id uuid primary key,business_id uuid);
  grant all on menu_categories,menu_items,suppliers,purchase_orders to anon,authenticated;`);
@@ -203,6 +205,33 @@ test('migration refuses competing legacy stock triggers without removing them',a
 test('administrator preflight SQL runs read-only against the schema-shaped database',async()=>{
  const before=(await db.query('select count(*)::int n from orders')).rows[0].n;
  const results=await db.exec(fs.readFileSync('supabase/restaurant_preflight.sql','utf8'));
- assert.equal(results.length,4);
+ assert.equal(results.length,5);
  assert.equal((await db.query('select count(*)::int n from orders')).rows[0].n,before);
+});
+
+test('verified legacy deduction trigger is replaced and its function remains auditable',async()=>{
+ assert.equal((await db.query("select count(*)::int n from pg_trigger where tgname='trg_deduct_inventory_on_order_complete'")).rows[0].n,0);
+ assert.ok((await db.query("select to_regprocedure('public.deduct_inventory_on_order_complete()') as f")).rows[0].f);
+ assert.equal((await db.query("select has_function_privilege('anon','public.deduct_inventory_on_order_complete()','execute') as allowed")).rows[0].allowed,false);
+});
+
+test('inventory links target the canonical product table rather than the legacy menu',async()=>{
+ await asRole('authenticated',ownerA,tx=>tx.query("insert into inventory_items(business_id,name,product_service_id) values($1,'Linked stock',$2)",[businessA,itemA]));
+ await assert.rejects(asRole('authenticated',ownerA,tx=>tx.query("insert into inventory_items(business_id,name,product_service_id) values($1,'Foreign stock',$2)",[businessA,itemB])),/does not belong/);
+});
+
+test('hosted state checks accept pending bookings, seated bookings and refunded orders',async()=>{
+ const booking=await asRole('anon',null,tx=>rpcBooking(tx));
+ await asRole('authenticated',ownerA,tx=>tx.query("update bookings set status='seated' where id=$1",[booking.id]));
+ const order=await asRole('anon',null,tx=>rpcOrder(tx));
+ await asRole('authenticated',ownerA,tx=>tx.query("update orders set status='refunded' where id=$1",[order.id]));
+ await assert.rejects(asRole('authenticated',ownerA,tx=>tx.query("update orders set status='invalid' where id=$1",[order.id])),/orders_status_check/);
+});
+
+test('JSON null recipes behave as recipes with no ingredients',async()=>{
+ await asRole('authenticated',ownerA,tx=>tx.query("update product_services set recipe='null'::jsonb where id=$1",[itemA]));
+ const order=await asRole('anon',null,tx=>rpcOrder(tx));
+ await asRole('authenticated',ownerA,tx=>tx.query("update orders set status='completed' where id=$1",[order.id]));
+ await asRole('authenticated',ownerA,tx=>tx.query("update orders set status='refunded' where id=$1",[order.id]));
+ await asRole('authenticated',ownerA,tx=>tx.query("update product_services set recipe=null where id=$1",[itemA]));
 });

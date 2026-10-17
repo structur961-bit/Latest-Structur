@@ -1,5 +1,7 @@
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
 import { toast } from 'sonner';
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import { Input } from '@/components/ui/input';
@@ -12,22 +14,19 @@ import { Loader2, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLanguage } from '@/lib/i18n';
 
-const STATUSES = ['pending','confirmed','preparing','ready','completed','cancelled','refunded'];
+const STATUSES = ['open','pending','confirmed','preparing','ready','completed','cancelled','refunded'];
 
 export default function Orders() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [orders, setOrders] = useState([]);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [details, setDetails] = useState({ loading: false, items: [], customer: null });
+  const detailRequest = useRef(0);
 
-  const load = async () => {
-    const data = await base44.entities.Order.filter({ business_id: currentBusiness.id }, '-created_date', 100);
-    setOrders(data);
-  };
-
-  useEffect(() => { if (currentBusiness) load(); }, [currentBusiness]);
+  const { data: orders, loading, error, refresh: load } = useDashboardData(currentBusiness?.id, [], async () => {
+    return base44.entities.Order.filter({ business_id: currentBusiness.id }, '-created_date');
+  });
 
   const updateStatus = async (orderId, status) => {
     try {
@@ -38,16 +37,20 @@ export default function Orders() {
   };
 
   const openOrder = async order => {
+    const request = ++detailRequest.current;
     setSelected(order);
     setDetails({ loading: true, items: [], customer: null });
     try {
       const [items, customers] = await Promise.all([
-        base44.entities.OrderItem.filter({ order_id: order.id }, 'created_date', 200),
+        base44.entities.OrderItem.filter({ order_id: order.id }, 'created_date'),
         order.customer_id ? base44.entities.Customer.filter({ id: order.customer_id }, 'created_date', 1) : Promise.resolve([]),
       ]);
-      setDetails({ loading: false, items, customer: customers[0] || null });
-    } catch {
-      setDetails({ loading: false, items: [], customer: null });
+      if (detailRequest.current === request) setDetails({ loading: false, items, customer: customers[0] || null });
+    } catch (error) {
+      if (detailRequest.current === request) {
+        toast.error(error.message || 'Could not load order details.');
+        setDetails({ loading: false, items: [], customer: null });
+      }
     }
   };
 
@@ -66,6 +69,7 @@ export default function Orders() {
 
   return (
     <div className="space-y-5">
+      <DashboardDataStatus loading={loading} error={error} onRetry={load} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('orders.title')}</h1>
       </div>
@@ -101,7 +105,7 @@ export default function Orders() {
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-12">{t('orders.noOrdersFound')}</p>}
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+      <Dialog open={!!selected} onOpenChange={() => { detailRequest.current++; setSelected(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t('orders.orderNumber')} #{selected?.order_number}</DialogTitle></DialogHeader>
           {selected && (
@@ -114,7 +118,7 @@ export default function Orders() {
               </div>
               {details.loading ? <div className="flex justify-center py-5"><Loader2 className="h-5 w-5 animate-spin" /></div> : <>
                 {details.customer && <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</p><p className="mt-1 font-medium">{details.customer.full_name}</p><p className="text-sm text-muted-foreground">{[details.customer.phone, details.customer.email].filter(Boolean).join(' · ')}</p></div>}
-                <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Items</p><div className="mt-2 divide-y rounded-xl border">{details.items.map(item => <div key={item.id} className="flex justify-between gap-4 p-3 text-sm"><span><strong>{item.quantity}×</strong> {item.name_snapshot}</span><span>{item.line_total?.toFixed(2)} {selected.currency}</span></div>)}{!details.items.length && <p className="p-3 text-sm text-muted-foreground">No item lines were found.</p>}</div></div>
+                <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Items</p><div className="mt-2 divide-y rounded-xl border">{details.items.map(item => <div key={item.id} className="flex justify-between gap-4 p-3 text-sm"><span><strong>{item.quantity}×</strong> {item.name_snapshot}</span><span>{item.line_total?.toFixed(2)} {currentBusiness.currency}</span></div>)}{!details.items.length && <p className="p-3 text-sm text-muted-foreground">No item lines were found.</p>}</div></div>
               </>}
               <div>
                 <Label>{t('orders.updateStatus')}</Label>

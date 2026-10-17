@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useDashboardData } from '@/lib/useDashboardData';
+import DashboardDataStatus from '@/components/dashboard/DashboardDataStatus';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBusiness } from '@/lib/businessContext';
 import { Button } from '@/components/ui/button';
@@ -66,25 +68,20 @@ function InventoryForm({ item, products, onSave, onClose, onDelete }) {
 export default function Inventory() {
   const { currentBusiness } = useBusiness();
   const { t } = useLanguage();
-  const [items, setItems] = useState([]);
-  const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  const load = async () => {
-    const [data, menu] = await Promise.all([base44.entities.InventoryItem.filter({ business_id: currentBusiness.id }, '-created_date', 200), base44.entities.ProductService.filter({ business_id: currentBusiness.id }, 'name', 500)]);
-    setItems(data);
-    setProducts(menu);
-  };
-
-  useEffect(() => { if (currentBusiness) load(); }, [currentBusiness]);
+  const { data: { items, products }, loading, error, refresh: load } = useDashboardData(currentBusiness?.id, { items: [], products: [] }, async () => {
+    const [items, products] = await Promise.all([base44.entities.InventoryItem.filter({ business_id: currentBusiness.id }, '-created_date'),base44.entities.ProductService.filter({ business_id: currentBusiness.id }, 'name')]); return { items, products };
+  });
 
   const filtered = items.filter(i => i.name?.toLowerCase().includes(search.toLowerCase()) || i.sku?.toLowerCase().includes(search.toLowerCase()) || i.barcode?.includes(search) || i.supplier_name?.toLowerCase().includes(search.toLowerCase()));
   const lowStock = items.filter(i => i.qty_on_hand <= i.reorder_level).length;
 
   return (
     <div className="space-y-5">
+      <DashboardDataStatus loading={loading} error={error} onRetry={load} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t('inventory.title')}</h1>

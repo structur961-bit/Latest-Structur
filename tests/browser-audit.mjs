@@ -13,6 +13,8 @@ const products=[{id:'product',business_id:business.id,category_id:'category',nam
 const settings={id:'settings',business_id:business.id,tax_rate_percent:10,service_charge_percent:5,payment_rules:{cash:{is_enabled:true}},receipt_footer_text:''};
 const inventory=[{id:'stock',business_id:business.id,name:'Coffee beans',unit:'kg',quantity_on_hand:10,low_stock_threshold:1}];
 let loginFails=true;
+let failProductLoads=false;
+let largeCustomerList=false;
 await page.route('**/*.supabase.co/**',async route=>{
  const req=route.request(),url=new URL(req.url());const path=url.pathname;calls.push({path,method:req.method(),body:req.postDataJSON()});
  let body={},status=200;
@@ -30,6 +32,12 @@ await page.route('**/*.supabase.co/**',async route=>{
    const tables={businesses:[business],locations:[],categories,product_services:products,business_settings:[settings],inventory_items:inventory,orders:[],order_items:[],bookings:[],customers:[],loyalty_ledger:[],payments:[],campaigns:[],staff_memberships:[],restaurant_public_businesses:[business],restaurant_public_categories:categories,restaurant_public_products:products,restaurant_public_locations:[]};
    if(!(table in tables))throw new Error('Unexpected table: '+table);
    body=tables[table];
+   if(table==='product_services'&&req.method()==='GET'&&failProductLoads){status=503;body={message:'Menu temporarily unavailable'};}
+   if(table==='customers'&&req.method()==='GET'&&largeCustomerList){
+     const rows=Array.from({length:601},(_,i)=>({id:'customer-'+i,business_id:business.id,full_name:'Customer '+i,loyalty_points:0,total_spent:0}));
+     const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||500);
+     body=rows.slice(offset,offset+limit);
+   }
    const forbidden={order_items:['business_id','menu_item_id','selected_variant','selected_modifiers','line_total'],orders:['order_number','channel','currency','customer_notes','discount','delivery_fee'],business_settings:['payment_rules_json','tax_rate','service_charge_rate','receipt_footer'],staff_memberships:['is_active']};
    if(req.method()==='PATCH'||req.method()==='POST')for(const field of forbidden[table]||[])assert.ok(!(field in req.postDataJSON()),'Invalid '+table+' field '+field);
    if(req.method()==='PATCH'){const payload=req.postDataJSON();if(table==='businesses')Object.assign(business,payload);body=[{id:table==='businesses'?business.id:'product',...payload}];}
@@ -49,6 +57,14 @@ try{
   await page.goto('http://127.0.0.1:5173/dashboard/'+path);await page.locator('h1').waitFor();assert.equal(await page.getByText('Restaurant setup needed').count(),0);
  }
  console.log('PASS all 10 restaurant dashboard routes render');
+ failProductLoads=true;await page.goto('http://127.0.0.1:5173/dashboard/products');
+ await page.getByRole('alert').filter({hasText:'Menu temporarily unavailable'}).waitFor();
+ failProductLoads=false;await page.getByRole('button',{name:'Retry',exact:true}).click();
+ await page.getByText('Espresso',{exact:true}).waitFor();console.log('PASS menu load failure is visible and Retry recovers');
+ largeCustomerList=true;await page.goto('http://127.0.0.1:5173/dashboard/customers');
+ await page.getByText('Customer 600',{exact:true}).waitFor();await page.locator('input').fill('Customer 600');
+ await page.getByText('Customer 600',{exact:true}).waitFor();largeCustomerList=false;
+ console.log('PASS customer beyond 500 records remains searchable');
  await page.goto('http://127.0.0.1:5173/dashboard/bookings');await page.getByRole('button',{name:/new booking/i}).click();
  const bookingDialog=page.getByRole('dialog');await bookingDialog.locator('input').nth(0).fill('Audit Booking Customer');await bookingDialog.locator('input').nth(1).fill('5550000');await bookingDialog.locator('input[type=datetime-local]').fill('2027-01-15T19:00');await bookingDialog.locator('input').nth(3).fill('A1');await bookingDialog.getByRole('button',{name:'Save',exact:true}).click();await bookingDialog.waitFor({state:'hidden'});
  const ownerBooking=calls.find(c=>c.path.endsWith('/bookings')&&c.method==='POST');assert.equal(ownerBooking.body.start_at,'2027-01-15T15:00:00.000Z');assert.equal(ownerBooking.body.table_label,'A1');assert.equal('customer_name' in ownerBooking.body,false);console.log('PASS owner booking uses canonical fields and restaurant timezone');
