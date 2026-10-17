@@ -1,3 +1,19 @@
+# Missing-column follow-up: 17 October 2026
+
+This section supersedes deployment and test status below.
+
+The repeated form errors came from the prepared database migration not being deployed. Fixing only categories.description left ten other adapter columns absent. A complete comparison against all 14 entity whitelists found those ten fields; the additive restaurant_columns_patch.sql was approved and applied through Supabase. It adds only missing form columns and reloads PostgREST. It does not change existing rows, constraints, triggers, policies or grants.
+
+Live verification: all 184 adapter fields exist in SQL and pass zero-row REST queries. Category create and product create/update with barcode, SKU, type, dietary tags, variants/modifiers and featured/sort fields passed in an isolated transaction that was rolled back. No verification business or menu item was retained. This verifies database writes under administrator execution, not browser-owner authorization.
+
+Added a reusable contract reader derived from the actual adapter whitelist, generated read-only restaurant_contract_check.sql, expanded check:database to inspect every adapter field, and added regression tests against the original table shapes plus the additive patch. All 53 automated tests pass. Runtime application source did not change in this follow-up.
+
+Outstanding failures were explicitly rechecked: four public projections are absent, get_restaurant_checkout_settings(uuid) and set_order_payment_status(uuid,text) do not exist, the two existing public write functions still target obsolete menu/order columns, booking/order status constraints still reject pending/partial/refunded workflow states, inventory still references menu_items, and the old stock trigger remains installed. The live deployment check continues to fail. The broader production migration remains blocked by automatic approval review; it was not replayed or executed indirectly. Explicit approval of that exact shared-table migration is still required.
+
+Re-run node scripts/write-restaurant-contract.mjs after changing adapter fields, then node --test tests/*.test.mjs and npm run check:database. A column-only pass must never be presented as complete restaurant deployment.
+
+---
+
 # Restaurant verification update: 17 October 2026
 
 The current repository was compared with the hosted database through the authenticated Supabase SQL connector. The earlier report below describes the 16 October baseline; this update supersedes its connection status, test count and migration compatibility conclusions.

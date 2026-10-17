@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { restaurantEntities, restaurantRpcs } from '../scripts/restaurant-contract.mjs';
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const [ownerA, ownerB, ownerC, businessA, businessB, businessC, branchA, branchB, categoryA, itemA, itemB, customerA, customerB] = Array.from({length:13}, (_,i)=>id(i+1));
@@ -35,6 +36,33 @@ before(async () => {
   await db.query(`insert into customers(id,business_id,full_name) values ($1,$2,'A'),($3,$4,'B')`,[customerA,businessA,customerB,businessB]);
 });
 after(()=>db.close());
+
+test('every application write field and RPC exists after the complete migration',async()=>{
+ const columns=(await db.query("select table_name,column_name from information_schema.columns where table_schema='public'")).rows;
+ const present=new Set(columns.map(row=>`${row.table_name}.${row.column_name}`));
+ for(const entity of restaurantEntities())for(const field of entity.fields)assert.ok(present.has(`${entity.table}.${field}`),`${entity.table}.${field} missing`);
+ for(const signature of restaurantRpcs)assert.ok((await db.query('select to_regprocedure($1) as f',[signature])).rows[0].f,signature);
+});
+
+test('additive form patch fixes every missing field on the original hosted shape and preserves data',async()=>{
+ const original=new PGlite();
+ try{
+  await original.exec('create schema auth;create table auth.users(id uuid primary key);');
+  await original.exec(fs.readFileSync('tests/fixtures/restaurant-schema.sql','utf8'));
+  await original.query("insert into businesses(id,name,slug) values($1,'Preserved','preserved')",[businessA]);
+  const before=(await original.query("select column_name from information_schema.columns where table_schema='public' and table_name='product_services'")).rows;
+  assert.equal(before.some(row=>row.column_name==='barcode'),false);
+  const patch=fs.readFileSync('supabase/restaurant_columns_patch.sql','utf8');
+  await original.exec(patch);await original.exec(patch);
+  const columns=(await original.query("select table_name,column_name from information_schema.columns where table_schema='public'")).rows;
+  const present=new Set(columns.map(row=>`${row.table_name}.${row.column_name}`));
+  for(const entity of restaurantEntities())for(const field of entity.fields)assert.ok(present.has(`${entity.table}.${field}`),`${entity.table}.${field} missing`);
+  await original.query("insert into categories(id,business_id,name,description,image_url) values($1,$2,'Category','Description',null)",[categoryA,businessA]);
+  await original.query("insert into product_services(business_id,category_id,name,price,barcode,sku,type,dietary_tags,variants,modifiers,is_featured,sort_order,recipe) values($1,$2,'Meal',420,'1234567890','SKU-1','menu_item',ARRAY['vegan'],'[]','[]',true,0,'[]')",[businessA,categoryA]);
+  assert.equal((await original.query('select name from businesses where id=$1',[businessA])).rows[0].name,'Preserved');
+  assert.equal((await original.query('select barcode from product_services')).rows[0].barcode,'1234567890');
+ }finally{await original.close();}
+});
 test('schema bootstraps a new database and is idempotent', async()=>assert.equal((await db.query("select count(*)::int n from information_schema.tables where table_schema='public' and table_name in ('businesses','bookings','orders','payments')")).rows[0].n,4));
 
 test('anonymous reads only published businesses', async()=>assert.equal((await asRole('anon',null,tx=>tx.query('select id from restaurant_public_businesses'))).rows.length,2));

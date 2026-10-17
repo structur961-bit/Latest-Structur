@@ -4,7 +4,9 @@ Updated 17 October 2026 for Supabase project `cdkvojsruitrbgwkvgjt`, using the s
 
 ## Deployment status
 
-The revised SQL has **not** been applied to the hosted database. Automatic approval review rejected the production migration pending explicit approval of its changes to shared tables, constraints, triggers, policies and grants. The latest read-only check still found anonymous access to private restaurant rows, and the new public views are not installed. The frontend and database migration must be deployed together.
+The additive `restaurant_columns_patch.sql` has been applied to the hosted database. All 184 fields across the app's 14 tables now pass live SQL and REST checks, including category descriptions/images, menu barcode/SKU/type/dietary tags/variants/modifiers/featured/sort fields and order delivery addresses. Category and menu-item writes were verified in a transaction that was rolled back.
+
+The full `restaurant_setup.sql` has **not** been applied. Automatic approval review rejected that production migration pending explicit approval of its changes to shared tables, constraints, triggers, policies and grants. Public views and two RPCs remain missing; existing checkout functions use the obsolete menu schema. Private tables remain anonymously readable. Column compatibility alone does not make checkout, reservations, inventory or payments ready for production.
 
 ## Database setup
 
@@ -13,6 +15,8 @@ The revised SQL has **not** been applied to the hosted database. Automatic appro
 3. Run the complete `supabase/restaurant_setup.sql` in one query. It is transactional and rerunnable. It targets the existing tables and retains their data.
 4. The migration detaches only the exact old stock trigger inspected in this project, after matching its function body hash. Other conflicting processing triggers still stop deployment and require inspection. Duplicate settings and barcode conflicts also require data reconciliation.
 5. Run `npm run check:database`. It must pass before treating the hosted restaurant application as deployed and isolated.
+
+`check:database` now checks every field in the application's actual entity whitelist as well as public views, RPC discovery and anonymous isolation. If private metadata or OpenAPI is inaccessible, run `supabase/restaurant_contract_check.sql` with database administrator access; it reports each required column and RPC without writing data. Regenerate that SQL after adapter changes with `node scripts/write-restaurant-contract.mjs`. Automated tests reject a stale contract or fields missing from either the full migration or additive patch. An optional `SUPABASE_USER_ACCESS_TOKEN` in the terminal environment permits owner-scoped REST checks; never put it in a Vite environment variable or commit it.
 
 The migration uses `categories`, `product_services`, `orders`, `order_items`, `business_settings`, and the other existing owner tables. It does not replace them with a separate menu catalog. Any rows in legacy `menu_categories`/`menu_items` tables are copied with their IDs into the canonical catalog, then anonymous/client access to the unused legacy tables is revoked. No source rows are deleted.
 
