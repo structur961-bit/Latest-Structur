@@ -44,6 +44,13 @@ test('every application write field and RPC exists after the complete migration'
  for(const signature of restaurantRpcs)assert.ok((await db.query('select to_regprocedure($1) as f',[signature])).rows[0].f,signature);
 });
 
+test('hosted smoke verification passes under simulated Supabase roles and rolls back its records',async()=>{
+ const before=(await db.query('select count(*)::int n from businesses')).rows[0].n;
+ const results=await db.exec(fs.readFileSync('supabase/restaurant_live_smoke.sql','utf8'));
+ assert.match(results.at(-1).rows[0].result,/^PASS:/);
+ assert.equal((await db.query('select count(*)::int n from businesses')).rows[0].n,before);
+});
+
 test('additive form patch fixes every missing field on the original hosted shape and preserves data',async()=>{
  const original=new PGlite();
  try{

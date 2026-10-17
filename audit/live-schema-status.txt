@@ -1,30 +1,30 @@
-PASS table columns businesses: 24 fields
-PASS table columns locations: 11 fields
-PASS table columns customers: 12 fields
-PASS table columns bookings: 13 fields
-PASS table columns categories: 8 fields
-PASS table columns product_services: 21 fields
-PASS table columns orders: 15 fields
-PASS table columns order_items: 9 fields
-PASS table columns inventory_items: 17 fields
-PASS table columns business_settings: 17 fields
-PASS table columns payments: 12 fields
-PASS table columns campaigns: 10 fields
-PASS table columns loyalty_ledger: 8 fields
-PASS table columns staff_memberships: 7 fields
-FAIL public schema restaurant_public_businesses: HTTP 404
-FAIL public schema restaurant_public_categories: HTTP 404
-FAIL public schema restaurant_public_products: HTTP 404
-FAIL public schema restaurant_public_locations: HTTP 404
+UNVERIFIED table columns businesses: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns locations: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns customers: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns bookings: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns categories: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns product_services: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns orders: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns order_items: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns inventory_items: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns business_settings: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns payments: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns campaigns: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns loyalty_ledger: owner JWT or restaurant_contract_check.sql required
+UNVERIFIED table columns staff_memberships: owner JWT or restaurant_contract_check.sql required
+PASS public schema restaurant_public_businesses: HTTP 200
+PASS public schema restaurant_public_categories: HTTP 200
+PASS public schema restaurant_public_products: HTTP 200
+PASS public schema restaurant_public_locations: HTTP 200
 UNVERIFIED RPC discovery: OpenAPI access denied; run restaurant_contract_check.sql
-FAIL anonymous isolation customers: HTTP 200 (row access enabled)
-FAIL anonymous isolation orders: HTTP 200 (row access enabled)
-FAIL anonymous isolation order_items: HTTP 200 (row access enabled)
-FAIL anonymous isolation bookings: HTTP 200 (row access enabled)
-FAIL anonymous isolation inventory_items: HTTP 200 (row access enabled)
-FAIL anonymous isolation business_settings: HTTP 200 (row access enabled)
-FAIL anonymous isolation staff_memberships: HTTP 200 (row access enabled)
-UNVERIFIED anonymous isolation payments: HTTP 200
-UNVERIFIED anonymous isolation loyalty_ledger: HTTP 200
-FAIL anonymous isolation product_services: HTTP 200 (row access enabled)
-FAIL anonymous isolation businesses: HTTP 200 (row access enabled)
+PASS anonymous isolation customers: HTTP 401
+PASS anonymous isolation orders: HTTP 401
+PASS anonymous isolation order_items: HTTP 401
+PASS anonymous isolation bookings: HTTP 401
+PASS anonymous isolation inventory_items: HTTP 401
+PASS anonymous isolation business_settings: HTTP 401
+PASS anonymous isolation staff_memberships: HTTP 401
+PASS anonymous isolation payments: HTTP 401
+PASS anonymous isolation loyalty_ledger: HTTP 401
+PASS anonymous isolation product_services: HTTP 401
+PASS anonymous isolation businesses: HTTP 401

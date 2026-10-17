@@ -4,9 +4,11 @@ Updated 17 October 2026 for Supabase project `cdkvojsruitrbgwkvgjt`, using the s
 
 ## Deployment status
 
-The additive `restaurant_columns_patch.sql` has been applied to the hosted database. All 184 fields across the app's 14 tables now pass live SQL and REST checks, including category descriptions/images, menu barcode/SKU/type/dietary tags/variants/modifiers/featured/sort fields and order delivery addresses. Category and menu-item writes were verified in a transaction that was rolled back.
+The full restaurant migration was applied to Supabase project cdkvojsruitrbgwkvgjt on 17 October 2026 after explicit production approval. The optional category description and remaining form columns were applied first. Migration history records align_restaurant_catalog_permissions_and_workflows and the follow-up pin_restaurant_rate_validation_search_path.
 
-The full `restaurant_setup.sql` has **not** been applied. Automatic approval review rejected that production migration pending explicit approval of its changes to shared tables, constraints, triggers, policies and grants. Public views and two RPCs remain missing; existing checkout functions use the obsolete menu schema. Private tables remain anonymously readable. Column compatibility alone does not make checkout, reservations, inventory or payments ready for production.
+All 184 application fields across 14 tables and all four required RPCs were verified through administrator SQL. Public view queries pass, and anonymous reads of private restaurant tables are denied. A hosted transaction exercised public checkout/reservations, owner payments and refunds, stock deduction/restoration, loyalty and tenant isolation, then rolled back all synthetic data. This validates database behavior under Supabase roles; it does not verify real email delivery or a real browser owner's session.
+
+The read-only check:database command exits successfully. Private-column checks and RPC discovery can report UNVERIFIED without an owner JWT/OpenAPI access; the administrator SQL contract check supplied that evidence for this deployment. Supabase still flags the deliberately filtered public projection views and public definer RPCs; legacy helper-function advisories and disabled leaked-password protection are recorded in audit/DEPLOYMENT_STATUS.md. No claim of a clean security-advisor report is made.
 
 ## Database setup
 

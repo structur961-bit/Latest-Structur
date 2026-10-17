@@ -1,3 +1,15 @@
+# Approved production deployment: 17 October 2026
+
+The user explicitly approved the shared-table migration. It was successfully applied to project cdkvojsruitrbgwkvgjt as migration 20261017084221_align_restaurant_catalog_permissions_and_workflows, followed by 20261017084406_pin_restaurant_rate_validation_search_path. This supersedes every earlier approval/deployment block below.
+
+Administrator SQL verifies 184 fields across 14 tables and all four RPC signatures. Public views return HTTP 200; all eleven private-table anonymous probes return HTTP 401. The read-only deployment check exits 0, with private schema/OpenAPI probes correctly labeled UNVERIFIED when no owner JWT is supplied. Administrator metadata separately verifies those contracts.
+
+The hosted restaurant_live_smoke.sql transaction passed checkout pricing, pending/seated reservations, partial/full/refunded payments, canonical inventory links, exactly-once stock deduction, refund restoration, loyalty balance updates, hidden draft restaurants, denied anonymous customer reads and isolation against another identity. It rolled back all test records; a follow-up query found zero remaining synthetic businesses. These are live database role tests, not real browser login or email-delivery tests.
+
+All 54 local automated tests pass, including the same smoke script on disposable PostgreSQL. See DEPLOYMENT_STATUS.md for remaining advisor findings, migration details and operational limits.
+
+---
+
 # Missing-column follow-up: 17 October 2026
 
 This section supersedes deployment and test status below.

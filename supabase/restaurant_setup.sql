@@ -714,7 +714,7 @@ drop trigger if exists restaurant_process_order_stock on public.orders;
 create trigger restaurant_process_order_stock before update of status on public.orders for each row execute function public.process_restaurant_order_stock();
 
 create or replace function public.validate_restaurant_checkout_rates()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
  if coalesce(new.tax_rate_percent,0) not between 0 and 100 or coalesce(new.service_charge_percent,0) not between 0 and 100 then raise exception 'Checkout percentages must be between 0 and 100'; end if;
  return new;
