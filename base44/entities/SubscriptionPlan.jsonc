@@ -1,0 +1,71 @@
+{
+  "name": "SubscriptionPlan",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "name_en": {
+      "type": "string"
+    },
+    "name_ar": {
+      "type": "string"
+    },
+    "billing_interval": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "yearly",
+        "one_time"
+      ]
+    },
+    "price": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "included_locations": {
+      "type": "number"
+    },
+    "included_staff": {
+      "type": "number"
+    },
+    "included_orders": {
+      "type": "number"
+    },
+    "included_bookings": {
+      "type": "number"
+    },
+    "enabled_modules_json": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "code",
+    "name_en"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

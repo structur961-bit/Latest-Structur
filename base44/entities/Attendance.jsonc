@@ -1,0 +1,75 @@
+{
+  "name": "Attendance",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "registration_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "checked_in_by_user_id": {
+      "type": "string"
+    },
+    "attended_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "present",
+        "absent",
+        "late",
+        "excused"
+      ],
+      "default": "present"
+    }
+  },
+  "required": [
+    "business_id"
+  ],
+  "rls": {
+    "create": {
+      "data.business_id": "{{user.data.current_business_id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

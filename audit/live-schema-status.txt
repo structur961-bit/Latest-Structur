@@ -1,0 +1,15 @@
+FAIL public schema restaurant_public_businesses: HTTP 404
+FAIL public schema restaurant_public_categories: HTTP 404
+FAIL public schema restaurant_public_products: HTTP 404
+FAIL public schema restaurant_public_locations: HTTP 404
+FAIL anonymous isolation customers: HTTP 200 (row access enabled)
+FAIL anonymous isolation orders: HTTP 200 (row access enabled)
+FAIL anonymous isolation order_items: HTTP 200 (row access enabled)
+FAIL anonymous isolation bookings: HTTP 200 (row access enabled)
+FAIL anonymous isolation inventory_items: HTTP 200 (row access enabled)
+FAIL anonymous isolation business_settings: HTTP 200 (row access enabled)
+FAIL anonymous isolation staff_memberships: HTTP 200 (row access enabled)
+UNVERIFIED anonymous isolation payments: HTTP 200
+UNVERIFIED anonymous isolation loyalty_ledger: HTTP 200
+FAIL anonymous isolation product_services: HTTP 200 (row access enabled)
+FAIL anonymous isolation businesses: HTTP 200 (row access enabled)

@@ -1,0 +1,14 @@
+PASS protected route, login failure and disabled providers
+PASS registration validation, confirmation and resend
+PASS login to restaurant dashboard
+PASS all 10 restaurant dashboard routes render
+PASS owner booking uses canonical fields and restaurant timezone
+PASS canonical product creation and recipe submit
+PASS fractional inventory quantities save to canonical numeric columns
+PASS copy storefront link does not save settings
+PASS canonical tax and service settings save
+PASS public menu, cart and order confirmation
+PASS public reservation submits in restaurant timezone
+PASS mobile storefront and products fit viewport
+PASS password recovery clears session and returns to login
+PASS no uncaught browser errors

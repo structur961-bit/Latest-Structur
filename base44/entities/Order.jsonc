@@ -1,0 +1,147 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "order_number": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "web",
+        "whatsapp",
+        "phone",
+        "walk_in",
+        "manual"
+      ],
+      "default": "web"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending",
+        "confirmed",
+        "preparing",
+        "ready",
+        "completed",
+        "cancelled",
+        "refunded"
+      ],
+      "default": "pending"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "discount": {
+      "type": "number",
+      "default": 0
+    },
+    "tax": {
+      "type": "number",
+      "default": 0
+    },
+    "delivery_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid",
+        "refunded"
+      ],
+      "default": "unpaid"
+    },
+    "payment_gateway": {
+      "type": "string"
+    },
+    "customer_notes": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id",
+    "order_number"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

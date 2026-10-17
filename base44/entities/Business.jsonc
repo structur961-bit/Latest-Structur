@@ -1,0 +1,160 @@
+{
+  "name": "Business",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Business name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly slug for public storefront"
+    },
+    "about": {
+      "type": "string",
+      "description": "About / description of the business"
+    },
+    "vertical": {
+      "type": "string",
+      "enum": [
+        "restaurant",
+        "clothing",
+        "retail",
+        "salon",
+        "camp",
+        "clinic",
+        "gym",
+        "education",
+        "homeServices",
+        "events",
+        "carServices",
+        "distributor"
+      ],
+      "description": "Business vertical"
+    },
+    "country": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "Asia/Beirut"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "opening_hours_json": {
+      "type": "string",
+      "description": "JSON object of opening hours per day"
+    },
+    "owner_user_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "trial",
+        "cancelled"
+      ],
+      "default": "trial"
+    },
+    "onboarding_status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed"
+      ],
+      "default": "not_started"
+    },
+    "active_modules_json": {
+      "type": "string",
+      "description": "JSON array of active module codes"
+    },
+    "language_default": {
+      "type": "string",
+      "enum": [
+        "en",
+        "ar"
+      ],
+      "default": "en"
+    },
+    "billing_mode": {
+      "type": "string",
+      "enum": [
+        "subscription",
+        "one_time",
+        "manual"
+      ],
+      "default": "subscription"
+    },
+    "white_label_mode": {
+      "type": "boolean",
+      "default": false
+    },
+    "custom_domain": {
+      "type": "string",
+      "description": "Custom domain for public storefront, e.g. www.mybusiness.com"
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "data.owner_user_id": "{{user.id}}"
+        },
+        {
+          "id": "{{user.data.current_business_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.owner_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.owner_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

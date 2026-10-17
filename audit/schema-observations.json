@@ -1,0 +1,189 @@
+[
+  {
+    "table": "product_services",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "category_id": "string",
+      "name": "string",
+      "description": "string",
+      "price": "number",
+      "currency": "string",
+      "image_url": "null",
+      "is_active": "boolean",
+      "recipe": "null",
+      "duration_minutes": "number",
+      "duration_buffer_minutes": "null",
+      "created_at": "string",
+      "updated_at": "string"
+    }
+  },
+  {
+    "table": "products_services",
+    "status": 404,
+    "error": "Could not find the table 'public.products_services' in the schema cache"
+  },
+  {
+    "table": "categories",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "name": "string",
+      "sort_order": "number",
+      "is_active": "boolean",
+      "created_at": "string"
+    }
+  },
+  {
+    "table": "menu_items",
+    "status": 200,
+    "columns": null
+  },
+  {
+    "table": "menu_categories",
+    "status": 200,
+    "columns": null
+  },
+  {
+    "table": "orders",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "customer_id": "string",
+      "location_id": "null",
+      "order_type": "string",
+      "status": "string",
+      "subtotal": "number",
+      "tax": "number",
+      "service_charge": "number",
+      "total": "number",
+      "payment_status": "string",
+      "inventory_deducted": "boolean",
+      "created_at": "string",
+      "updated_at": "string",
+      "table_label": "null",
+      "notes": "string"
+    }
+  },
+  {
+    "table": "order_items",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "order_id": "string",
+      "product_service_id": "string",
+      "name_snapshot": "string",
+      "quantity": "number",
+      "unit_price": "number",
+      "modifiers": "array",
+      "notes": "null",
+      "created_at": "string"
+    }
+  },
+  {
+    "table": "inventory_items",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "name": "string",
+      "sku": "string",
+      "unit": "null",
+      "quantity_on_hand": "number",
+      "low_stock_threshold": "number",
+      "cost": "null",
+      "supplier_id": "string",
+      "created_at": "string",
+      "barcode": "null",
+      "product_service_id": "null",
+      "location_id": "null",
+      "variant_key": "null",
+      "supplier_name": "null",
+      "supplier_contact": "null",
+      "last_restocked_at": "null"
+    }
+  },
+  {
+    "table": "bookings",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "customer_id": "null",
+      "location_id": "null",
+      "booking_type": "string",
+      "party_size": "number",
+      "table_label": "string",
+      "start_at": "string",
+      "end_at": "null",
+      "status": "string",
+      "notes": "null",
+      "staff_user_id": "null",
+      "created_at": "string"
+    }
+  },
+  {
+    "table": "payments",
+    "status": 200,
+    "columns": null
+  },
+  {
+    "table": "business_settings",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "reservation_rules": "null",
+      "loyalty_rules": "null",
+      "notification_rules": "null",
+      "payment_rules": "null",
+      "tax_settings": "null",
+      "floor_plan": "array",
+      "service_charge_percent": "number",
+      "tax_rate_percent": "number",
+      "tip_suggestions": "array",
+      "delivery_zones": "array",
+      "prep_time_by_category": "null",
+      "receipt_footer_text": "null",
+      "cancellation_policy": "null",
+      "reviews": "null",
+      "created_at": "string"
+    }
+  },
+  {
+    "table": "loyalty_ledger",
+    "status": 200,
+    "columns": null
+  },
+  {
+    "table": "staff_memberships",
+    "status": 200,
+    "columns": {
+      "id": "string",
+      "business_id": "string",
+      "user_id": "string",
+      "user_email": "string",
+      "user_name": "null",
+      "role": "string",
+      "created_at": "string"
+    }
+  },
+  {
+    "table": "purchase_orders",
+    "status": 200,
+    "columns": null
+  },
+  {
+    "table": "suppliers",
+    "status": 200,
+    "columns": null
+  },
+  {
+    "table": "stock_movements",
+    "status": 404,
+    "error": "Could not find the table 'public.stock_movements' in the schema cache"
+  }
+]

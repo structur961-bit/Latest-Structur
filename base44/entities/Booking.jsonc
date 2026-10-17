@@ -1,0 +1,122 @@
+{
+  "name": "Booking",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "staff_user_id": {
+      "type": "string"
+    },
+    "booking_type": {
+      "type": "string",
+      "enum": [
+        "table_reservation",
+        "appointment",
+        "consultation",
+        "class",
+        "service_job"
+      ]
+    },
+    "start_at": {
+      "type": "string"
+    },
+    "end_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "no_show"
+      ],
+      "default": "pending"
+    },
+    "party_size": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "booking_type"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        },
+        {
+          "data.staff_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.business_id": "{{user.data.current_business_id}}"
+        },
+        {
+          "data.customer_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

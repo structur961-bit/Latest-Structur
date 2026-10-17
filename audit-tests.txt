@@ -1,0 +1,40 @@
+✔ partial updates preserve all unspecified database columns (38.362ms)
+✔ explicit alias updates, including clearing a barcode, are preserved (2.6201ms)
+✔ empty PATCH result is an actionable error (3.2506ms)
+✔ concurrent requests share one refresh and use the refreshed token (19.252ms)
+✔ transient refresh failure preserves session for retry (2.2204ms)
+✔ rejected refresh clears the invalid session (1.6349ms)
+✔ user-controlled role metadata cannot grant admin (1.3522ms)
+✔ publishable key works for the owner client (2.572ms)
+✔ logout clears expired sessions even when the server fails (1.3679ms)
+✔ registration and recovery reject short passwords before contacting server (2.2879ms)
+✔ email confirmation tokens are captured and removed from the URL (1.2914ms)
+✔ entity lists paginate beyond the Supabase row limit and honor explicit limits (5.694ms)
+✔ provider list reflects project configuration and maps Microsoft to Azure (1.2616ms)
+✔ non-JSON database failure retains its HTTP status (1.1199ms)
+✔ schema bootstraps a new database and is idempotent (2146.8987ms)
+✔ anonymous reads only published businesses (3.3826ms)
+✔ anonymous users cannot read customer information or write menu items (6.0097ms)
+✔ owners cannot read or update another restaurant private records (6.5372ms)
+✔ owners cannot insert records into another business or create duplicate businesses (4.6559ms)
+✔ cross-business category/customer/branch references are rejected (6.7621ms)
+✔ public order recalculates prices and inserts matching item totals (15.8425ms)
+✔ public orders reject foreign branch, foreign item, empty cart, invalid quantities, missing address (18.007ms)
+✔ failed orders roll back without creating customer records (3.5452ms)
+✔ unpublished restaurants cannot receive public orders or bookings (4.7021ms)
+✔ public reservations store future dates as pending (5.9595ms)
+✔ public reservations reject past/infinite/missing times, invalid party sizes, foreign branches (13.7838ms)
+✔ loyalty balance changes atomically with ledger insert and delete (8.3171ms)
+✔ partial payments, mark paid, repeated paid, refunds, unpaid remain consistent (42.5163ms)
+✔ moving completed order to a different customer refreshes both spend totals (10.4538ms)
+✔ reservations use restaurant timezone independent of customer timezone (29.198ms)
+✔ reservation rejects nonexistent daylight saving time (0.8654ms)
+✔ date minimum follows restaurant local calendar (0.4498ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2557.8789
